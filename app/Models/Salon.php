@@ -22,4 +22,14 @@ class Salon extends Model
     {
         return $this->hasMany(Message::class);
     }
+
+    public function games()
+    {
+        return $this->hasMany(Game::class);
+    }
+
+    public function currentGame()
+    {
+        return $this->hasOne(Game::class)->whereIn('status', ['waiting', 'selecting', 'playing'])->latest();
+    }
 }

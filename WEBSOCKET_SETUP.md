@@ -1,8 +1,8 @@
-# Configuration WebSocket avec Laravel Reverb
+# Configuration WebSocket - Jeu de Loto en Temps Réel
 
 ## Démarrage du système
 
-Pour utiliser le chat en temps réel, vous devez démarrer 3 services :
+Pour utiliser le jeu de loto en temps réel, vous devez démarrer 3 services :
 
 ### 1. Serveur Laravel
 ```bash
@@ -19,18 +19,33 @@ php artisan reverb:start
 php artisan queue:work
 ```
 
-## Alternative : Utiliser un seul terminal
+## Comment jouer
 
-Vous pouvez aussi utiliser `screen` ou `tmux` pour gérer plusieurs processus, ou simplement ouvrir 3 terminaux différents.
+1. **Créer un compte** - Inscrivez-vous sur la plateforme
+2. **Créer ou rejoindre un salon** - Allez dans "Salons" et créez un nouveau salon ou rejoignez-en un existant
+3. **Démarrer une partie** - Une fois dans le salon, cliquez sur "Démarrer une partie"
+4. **Sélectionner un ticket** - Vous avez 15 secondes pour choisir parmi 4 tickets générés automatiquement
+   - Si vous ne sélectionnez pas, un ticket sera choisi aléatoirement pour vous
+5. **Tirage automatique** - Une fois tous les joueurs prêts, le tirage commence automatiquement
+6. **Gagner** - Le premier joueur à compléter une ligne horizontale gagne !
 
-## Test du système
+## Fonctionnalités
 
-1. Créez un compte utilisateur
-2. Créez un salon
-3. Ouvrez le salon dans deux navigateurs différents (ou deux fenêtres en navigation privée)
-4. Connectez-vous avec deux utilisateurs différents
-5. Rejoignez le même salon avec les deux utilisateurs
-6. Envoyez des messages - ils devraient apparaître en temps réel !
+- ✅ Génération automatique de 4 tickets de loto par joueur
+- ✅ Timer de 15 secondes pour la sélection
+- ✅ Sélection automatique si timeout
+- ✅ Tirage en temps réel synchronisé pour tous les joueurs
+- ✅ Détection automatique du gagnant
+- ✅ Interface moderne avec animations
+- ✅ WebSocket pour synchronisation temps réel
+
+## Structure du ticket
+
+Chaque ticket de loto contient :
+- 3 lignes x 10 colonnes
+- 15 numéros (5 par ligne)
+- Numéros de 1 à 99
+- Maximum 3 numéros par colonne
 
 ## Configuration
 
@@ -39,11 +54,3 @@ Les paramètres WebSocket sont dans le fichier `.env` :
 - `REVERB_PORT=8080`
 - `BROADCAST_CONNECTION=reverb`
 - `QUEUE_CONNECTION=database`
-
-## Fonctionnalités
-
-- ✅ Messages en temps réel
-- ✅ Authentification des channels (seuls les membres du salon peuvent voir les messages)
-- ✅ Interface chat moderne avec Tailwind CSS
-- ✅ Affichage de l'auteur et de l'heure des messages
-- ✅ Auto-scroll vers les nouveaux messages

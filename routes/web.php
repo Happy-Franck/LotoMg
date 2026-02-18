@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\MessageController;
+use App\Http\Controllers\GameController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SalonController;
 use Illuminate\Support\Facades\Route;
@@ -22,8 +22,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/salons/{salon}/join', [SalonController::class, 'join'])->name('salons.join');
     Route::post('/salons/{salon}/leave', [SalonController::class, 'leave'])->name('salons.leave');
     
-    Route::get('/salons/{salon}/messages', [MessageController::class, 'index'])->name('messages.index');
-    Route::post('/salons/{salon}/messages', [MessageController::class, 'store'])->name('messages.store');
+    Route::post('/salons/{salon}/game/start', [GameController::class, 'start'])->name('game.start');
+    Route::post('/games/{game}/select-ticket', [GameController::class, 'selectTicket'])->name('game.selectTicket');
+    Route::get('/games/{game}/status', [GameController::class, 'getStatus'])->name('game.status');
 });
 
 require __DIR__.'/auth.php';
