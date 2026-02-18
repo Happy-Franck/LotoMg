@@ -17,4 +17,9 @@ class Salon extends Model
     {
         return $this->belongsToMany(User::class, 'salon_users');
     }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
 }

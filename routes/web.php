@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SalonController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('salons', SalonController::class);
     Route::post('/salons/{salon}/join', [SalonController::class, 'join'])->name('salons.join');
     Route::post('/salons/{salon}/leave', [SalonController::class, 'leave'])->name('salons.leave');
+    
+    Route::get('/salons/{salon}/messages', [MessageController::class, 'index'])->name('messages.index');
+    Route::post('/salons/{salon}/messages', [MessageController::class, 'store'])->name('messages.store');
 });
 
 require __DIR__.'/auth.php';
