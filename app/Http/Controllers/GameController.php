@@ -74,6 +74,14 @@ class GameController extends Controller
 
         broadcast(new TicketSelected($ticket, $game))->toOthers();
 
+        // Vérifier si tous les tickets sont sélectionnés
+        $allSelected = $game->tickets()->where('is_selected', false)->count() === 0;
+        
+        if ($allSelected) {
+            // Tous les tickets sont sélectionnés, le scheduler va démarrer le tirage
+            \Log::info("All tickets selected for game {$game->id}, drawing will start automatically");
+        }
+
         return response()->json($ticket);
     }
 

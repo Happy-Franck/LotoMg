@@ -248,14 +248,17 @@
         function handleGameStarted(game) {
             currentGame = game;
             document.getElementById('start-game-btn').classList.add('hidden');
-            document.getElementById('timer-container').classList.remove('hidden');
-            document.getElementById('ticket-selection').classList.remove('hidden');
+            
+            if (isParticipant) {
+                document.getElementById('timer-container').classList.remove('hidden');
+                document.getElementById('ticket-selection').classList.remove('hidden');
 
-            // Display ticket options
-            const myTicket = game.tickets.find(t => t.user_id === currentUserId);
-            if (myTicket && myTicket.generated_options) {
-                displayTicketOptions(myTicket.generated_options);
-                startSelectionTimer();
+                // Display ticket options
+                const myTicket = game.tickets.find(t => t.user_id === currentUserId);
+                if (myTicket && myTicket.generated_options) {
+                    displayTicketOptions(myTicket.generated_options);
+                    startSelectionTimer();
+                }
             }
         }
 
@@ -359,10 +362,12 @@
             })
             .listen('TicketSelected', (e) => {
                 console.log('🎫 TicketSelected event received:', e);
+                checkIfAllTicketsSelected();
             })
             .listen('NumberDrawn', (e) => {
                 console.log('🎲 NumberDrawn event received:', e);
                 displayDrawnNumber(e.number);
+                highlightMatchingNumbers(e.number);
             })
             .listen('GameFinished', (e) => {
                 console.log('🏆 GameFinished event received:', e);
@@ -407,6 +412,96 @@
         function showWinner(winnerName) {
             document.getElementById('winner-announcement').classList.remove('hidden');
             document.getElementById('winner-name').textContent = `${winnerName} a gagné !`;
+        }
+
+        async function checkIfAllTicketsSelected() {
+            if (!currentGame) return;
+
+            const response = await fetch(`/games/${currentGame.id}/status`);
+            const game = await response.json();
+
+            const allSelected = game.tickets.every(t => t.is_selected);
+
+            if (allSelected) {
+                // Tous les tickets sont sélectionnés, afficher les tickets et commencer le tirage
+                document.getElementById('ticket-selection').classList.add('hidden');
+                document.getElementById('timer-container').classList.add('hidden');
+                document.getElementById('drawn-numbers-container').classList.remove('hidden');
+                document.getElementById('player-tickets').classList.remove('hidden');
+
+                displayAllPlayerTickets(game.tickets);
+            }
+        }
+
+        function displayAllPlayerTickets(tickets) {
+            const container = document.getElementById('tickets-container');
+            container.innerHTML = '';
+
+            tickets.forEach(ticket => {
+                const ticketDiv = document.createElement('div');
+                ticketDiv.className = 'ticket';
+                ticketDiv.dataset.ticketId = ticket.id;
+
+                // Titre avec le nom du joueur
+                const title = document.createElement('div');
+                title.className = 'text-center font-semibold mb-2';
+                title.textContent = ticket.user.name;
+                if (ticket.user.id === currentUserId) {
+                    title.textContent += ' (Vous)';
+                    title.classList.add('text-blue-600');
+                }
+                ticketDiv.appendChild(title);
+
+                // Afficher la grille du ticket
+                ticket.numbers.forEach(row => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'ticket-row';
+
+                    row.forEach(num => {
+                        const cell = document.createElement('div');
+                        cell.className = 'ticket-cell';
+                        cell.dataset.number = num;
+                        
+                        if (num !== null) {
+                            cell.textContent = num;
+                        } else {
+                            cell.classList.add('empty');
+                        }
+                        rowDiv.appendChild(cell);
+                    });
+
+                    ticketDiv.appendChild(rowDiv);
+                });
+
+                container.appendChild(ticketDiv);
+            });
+        }
+
+        function highlightMatchingNumbers(drawnNumber) {
+            const allCells = document.querySelectorAll('.ticket-cell[data-number]');
+            allCells.forEach(cell => {
+                if (parseInt(cell.dataset.number) === drawnNumber) {
+                    cell.classList.add('highlight');
+                }
+            });
+
+            // Vérifier les lignes gagnantes
+            checkWinningLines();
+        }
+
+        function checkWinningLines() {
+            const tickets = document.querySelectorAll('.ticket[data-ticket-id]');
+            tickets.forEach(ticket => {
+                const rows = ticket.querySelectorAll('.ticket-row');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('.ticket-cell:not(.empty)');
+                    const highlightedCells = row.querySelectorAll('.ticket-cell.highlight');
+
+                    if (cells.length > 0 && cells.length === highlightedCells.length) {
+                        ticket.classList.add('winner');
+                    }
+                });
+            });
         }
         }); // Fin du waitForEcho
     </script>
