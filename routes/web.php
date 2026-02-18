@@ -25,6 +25,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/salons/{salon}/game/start', [GameController::class, 'start'])->name('game.start');
     Route::post('/games/{game}/select-ticket', [GameController::class, 'selectTicket'])->name('game.selectTicket');
     Route::get('/games/{game}/status', [GameController::class, 'getStatus'])->name('game.status');
+    
+    // Test broadcast
+    Route::get('/test-broadcast/{salon}', function(\App\Models\Salon $salon) {
+        broadcast(new \App\Events\UserJoinedSalon(auth()->user(), $salon));
+        return 'Broadcast sent!';
+    });
 });
 
 require __DIR__.'/auth.php';

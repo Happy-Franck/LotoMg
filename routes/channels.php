@@ -8,6 +8,20 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('salon.{salonId}', function ($user, $salonId) {
-    $salon = Salon::find($salonId);
-    return $salon && $salon->participants->contains($user->id);
+    $salon = Salon::with('participants')->find($salonId);
+    if (!$salon) {
+        return false;
+    }
+    
+    // Vérifier si l'utilisateur est participant
+    $isParticipant = $salon->participants->contains($user->id);
+    
+    \Log::info('Channel authorization', [
+        'user_id' => $user->id,
+        'salon_id' => $salonId,
+        'is_participant' => $isParticipant,
+        'participants' => $salon->participants->pluck('id')->toArray()
+    ]);
+    
+    return $isParticipant;
 });

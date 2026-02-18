@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\UserJoinedSalon;
+use App\Events\UserLeftSalon;
 use App\Models\Salon;
 use Illuminate\Http\Request;
 
@@ -69,6 +71,19 @@ class SalonController extends Controller
     {
         if (!$salon->participants->contains(auth()->id())) {
             $salon->participants()->attach(auth()->id());
+            $salon->refresh(); // Recharger le salon avec les nouvelles données
+            $salon->load('participants'); // Charger les participants
+            
+            \Log::info('User joined salon', [
+                'user_id' => auth()->id(),
+                'user_name' => auth()->user()->name,
+                'salon_id' => $salon->id,
+                'participants_count' => $salon->participants->count()
+            ]);
+            
+            broadcast(new UserJoinedSalon(auth()->user(), $salon))->toOthers();
+            
+            \Log::info('Broadcast sent for UserJoinedSalon');
         }
 
         return redirect()->route('salons.show', $salon)->with('success', 'Vous avez rejoint le salon !');
@@ -78,10 +93,13 @@ class SalonController extends Controller
     {
         if ($salon->user_id !== auth()->id()) {
             $salon->participants()->detach(auth()->id());
+            $salon->refresh(); // Recharger le salon avec les nouvelles données
+            $salon->load('participants'); // Charger les participants
+            
+            broadcast(new UserLeftSalon(auth()->user(), $salon))->toOthers();
             return redirect()->route('salons.index')->with('success', 'Vous avez quitté le salon !');
         }
 
         return redirect()->route('salons.show', $salon)->with('error', 'Le propriétaire ne peut pas quitter son salon !');
     }
 }
-

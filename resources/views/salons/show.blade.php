@@ -84,7 +84,7 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold">Participants ({{ $salon->participants->count() }})</h3>
+                            <h3 class="text-lg font-semibold">Participants (<span id="participants-count">{{ $salon->participants->count() }}</span>)</h3>
                             @if($salon->user_id !== auth()->id())
                                 <form action="{{ route('salons.leave', $salon) }}" method="POST">
                                     @csrf
@@ -94,9 +94,9 @@
                                 </form>
                             @endif
                         </div>
-                        <ul class="divide-y">
+                        <ul id="participants-list" class="divide-y">
                             @foreach($salon->participants as $participant)
-                                <li class="py-2 flex items-center justify-between">
+                                <li class="py-2 flex items-center justify-between" data-user-id="{{ $participant->id }}">
                                     <span>{{ $participant->name }}</span>
                                     @if($participant->id === $salon->user_id)
                                         <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Propriétaire</span>
@@ -122,7 +122,6 @@
         </div>
     </div>
 
-    @if($salon->participants->contains(auth()->id()))
     <style>
         .ticket {
             background: linear-gradient(145deg, #ffffff, #f8f9fa);
@@ -199,35 +198,42 @@
     </style>
 
     <script type="module">
-        import Echo from 'laravel-echo';
-        import Pusher from 'pusher-js';
+        // Attendre que Echo soit disponible
+        const waitForEcho = () => {
+            return new Promise((resolve) => {
+                if (window.Echo) {
+                    resolve(window.Echo);
+                } else {
+                    const checkEcho = setInterval(() => {
+                        if (window.Echo) {
+                            clearInterval(checkEcho);
+                            resolve(window.Echo);
+                        }
+                    }, 100);
+                }
+            });
+        };
 
-        window.Pusher = Pusher;
-        window.Echo = new Echo({
-            broadcaster: 'reverb',
-            key: '{{ config('broadcasting.connections.reverb.key') }}',
-            wsHost: '{{ config('broadcasting.connections.reverb.host') }}',
-            wsPort: {{ config('broadcasting.connections.reverb.port') }},
-            wssPort: {{ config('broadcasting.connections.reverb.port') }},
-            forceTLS: false,
-            enabledTransports: ['ws', 'wss'],
-        });
-
-        const salonId = {{ $salon->id }};
+        waitForEcho().then((Echo) => {
+            const salonId = {{ $salon->id }};
         const currentUserId = {{ auth()->id() }};
+        const salonOwnerId = {{ $salon->user_id }};
+        const isParticipant = {{ $salon->participants->contains(auth()->id()) ? 'true' : 'false' }};
         let currentGame = null;
         let timerInterval = null;
 
         // Start Game
-        document.getElementById('start-game-btn').addEventListener('click', async () => {
-            try {
-                const response = await fetch(`/salons/${salonId}/game/start`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                });
+        const startGameBtn = document.getElementById('start-game-btn');
+        if (startGameBtn) {
+            startGameBtn.addEventListener('click', async () => {
+                try {
+                    const response = await fetch(`/salons/${salonId}/game/start`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    });
 
                 if (response.ok) {
                     const game = await response.json();
@@ -236,7 +242,8 @@
             } catch (error) {
                 console.error('Error starting game:', error);
             }
-        });
+            });
+        }
 
         function handleGameStarted(game) {
             currentGame = game;
@@ -325,21 +332,69 @@
         }
 
         // Listen for game events
+        console.log('Connecting to salon channel:', salonId);
+        
         Echo.private(`salon.${salonId}`)
+            .subscribed(() => {
+                console.log('✅ Successfully subscribed to salon channel');
+            })
+            .error((error) => {
+                console.error('❌ Error subscribing to salon channel:', error);
+            })
+            .listen('UserJoinedSalon', (e) => {
+                console.log('👤 UserJoinedSalon event received:', e);
+                addParticipant(e.user);
+                updateParticipantsCount(e.participants_count);
+            })
+            .listen('UserLeftSalon', (e) => {
+                console.log('👋 UserLeftSalon event received:', e);
+                removeParticipant(e.user.id);
+                updateParticipantsCount(e.participants_count);
+            })
             .listen('GameStarted', (e) => {
+                console.log('🎮 GameStarted event received:', e);
                 fetch(`/games/${e.game_id}/status`)
                     .then(res => res.json())
                     .then(game => handleGameStarted(game));
             })
             .listen('TicketSelected', (e) => {
-                console.log(`${e.user_name} a sélectionné son ticket`);
+                console.log('🎫 TicketSelected event received:', e);
             })
             .listen('NumberDrawn', (e) => {
+                console.log('🎲 NumberDrawn event received:', e);
                 displayDrawnNumber(e.number);
             })
             .listen('GameFinished', (e) => {
+                console.log('🏆 GameFinished event received:', e);
                 showWinner(e.winner_name);
             });
+
+        function addParticipant(user) {
+            const participantsList = document.getElementById('participants-list');
+            const existingParticipant = participantsList.querySelector(`[data-user-id="${user.id}"]`);
+            
+            if (!existingParticipant) {
+                const li = document.createElement('li');
+                li.className = 'py-2 flex items-center justify-between';
+                li.dataset.userId = user.id;
+                li.innerHTML = `
+                    <span>${user.name}</span>
+                    ${user.id === salonOwnerId ? '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Propriétaire</span>' : ''}
+                `;
+                participantsList.appendChild(li);
+            }
+        }
+
+        function removeParticipant(userId) {
+            const participant = document.querySelector(`[data-user-id="${userId}"]`);
+            if (participant) {
+                participant.remove();
+            }
+        }
+
+        function updateParticipantsCount(count) {
+            document.getElementById('participants-count').textContent = count;
+        }
 
         function displayDrawnNumber(number) {
             const container = document.getElementById('drawn-numbers');
@@ -353,6 +408,6 @@
             document.getElementById('winner-announcement').classList.remove('hidden');
             document.getElementById('winner-name').textContent = `${winnerName} a gagné !`;
         }
+        }); // Fin du waitForEcho
     </script>
-    @endif
 </x-app-layout>
