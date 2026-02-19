@@ -15,15 +15,20 @@ class ProcessGameDrawing extends Command
     public function handle()
     {
         // Trouver les jeux en attente de tirage (tous les tickets sélectionnés)
-        $games = Game::where('status', 'selecting')->get();
+        $games = Game::with(['salon', 'tickets.user'])
+            ->where('status', 'selecting')
+            ->whereDoesntHave('tickets', function($query) {
+                $query->where('is_selected', false);
+            })
+            ->get();
+
+        if ($games->isEmpty()) {
+            return 0;
+        }
 
         foreach ($games as $game) {
-            $allTicketsSelected = $game->tickets()->where('is_selected', false)->count() === 0;
-
-            if ($allTicketsSelected) {
-                $this->info("Starting drawing for game {$game->id}");
-                $this->startDrawing($game);
-            }
+            $this->info("Starting drawing for game {$game->id} in salon {$game->salon_id}");
+            $this->startDrawing($game);
         }
 
         return 0;
@@ -31,6 +36,12 @@ class ProcessGameDrawing extends Command
 
     private function startDrawing(Game $game)
     {
+        // Vérifier que le jeu n'est pas déjà terminé
+        if ($game->status === 'finished') {
+            $this->warn("Game {$game->id} is already finished, skipping");
+            return;
+        }
+
         $game->update(['status' => 'playing']);
 
         // Générer la liste des numéros (1-99)
@@ -42,11 +53,21 @@ class ProcessGameDrawing extends Command
 
         // Tirer les numéros un par un
         foreach ($numbers as $number) {
+            // Vérifier à chaque itération que le jeu n'a pas été arrêté
+            $game->refresh();
+            if ($game->status === 'finished') {
+                $this->warn("Game {$game->id} was stopped externally");
+                break;
+            }
+
             $drawnNumbers[] = $number;
             $game->update(['drawn_numbers' => $drawnNumbers]);
 
             // Broadcaster le numéro tiré
-            broadcast(new NumberDrawn($game, $number));
+            $event = new NumberDrawn($game, $number);
+            broadcast($event);
+            
+            \Log::info("Broadcasting number: {$number} for game {$game->id}");
 
             $this->info("Drew number: {$number}");
 
@@ -55,11 +76,11 @@ class ProcessGameDrawing extends Command
 
             if ($winner) {
                 $this->info("Winner found: {$winner->user->name}");
-                break;
+                break; // Arrêter le tirage immédiatement
             }
 
-            // Pause de 300ms entre chaque tirage
-            usleep(300000);
+            // Pause de 1 seconde entre chaque tirage
+            sleep(1);
         }
 
         // Marquer le jeu comme terminé
@@ -73,7 +94,10 @@ class ProcessGameDrawing extends Command
             $winner->update(['is_winner' => true]);
         }
 
-        broadcast(new GameFinished($game));
+        $finishedEvent = new GameFinished($game);
+        broadcast($finishedEvent);
+        
+        \Log::info("Game {$game->id} finished, winner: " . ($winner ? $winner->user->name : 'none'));
 
         $this->info("Game {$game->id} finished");
     }

@@ -33,10 +33,13 @@ php artisan schedule:work
    - Si vous ne sélectionnez pas, un ticket sera choisi aléatoirement pour vous
 5. **Attendre les autres joueurs** - Une fois votre ticket sélectionné, attendez que tous les joueurs sélectionnent le leur
 6. **Tirage automatique** - Le tirage commence automatiquement dès que tous les joueurs ont sélectionné
-   - Les numéros sont tirés toutes les 300ms
+   - Les numéros sont tirés un par un toutes les secondes
    - Vous voyez votre ticket et ceux de vos adversaires
    - Les numéros tirés sont surlignés en temps réel sur tous les tickets
 7. **Gagner** - Le premier joueur à compléter une ligne horizontale gagne !
+   - Si vous gagnez : "🎉 Félicitations ! Vous avez gagné !"
+   - Si vous perdez : "😔 [Nom du gagnant] a gagné ! Vous avez perdu."
+   - Le ticket gagnant devient vert, les perdants rouges
 
 ## Fonctionnalités
 

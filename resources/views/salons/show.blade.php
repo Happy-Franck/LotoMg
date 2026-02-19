@@ -73,8 +73,6 @@
 
                         <!-- Winner Announcement -->
                         <div id="winner-announcement" class="hidden text-center py-8">
-                            <div class="text-6xl mb-4">🎉</div>
-                            <h2 class="text-3xl font-bold text-green-600 mb-2">Félicitations !</h2>
                             <p class="text-xl" id="winner-name"></p>
                         </div>
                     </div>
@@ -377,6 +375,7 @@
             })
             .listen('NumberDrawn', (e) => {
                 console.log('🎲 NumberDrawn event received:', e);
+                console.log('Current game:', currentGame);
                 displayDrawnNumber(e.number);
                 highlightMatchingNumbers(e.number);
             })
@@ -432,7 +431,13 @@
         function showWinner(winnerName, winnerId) {
             // Afficher l'annonce pour tous
             document.getElementById('winner-announcement').classList.remove('hidden');
-            document.getElementById('winner-name').textContent = `🎉 ${winnerName} a gagné !`;
+            
+            // Message différent selon si on a gagné ou perdu
+            if (winnerId === currentUserId) {
+                document.getElementById('winner-name').textContent = `🎉 Félicitations ! Vous avez gagné !`;
+            } else {
+                document.getElementById('winner-name').textContent = `😔 ${winnerName} a gagné ! Vous avez perdu.`;
+            }
             
             // Colorer les tickets
             const tickets = document.querySelectorAll('.ticket[data-ticket-id]');
