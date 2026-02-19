@@ -73,7 +73,10 @@
 
                         <!-- Winner Announcement -->
                         <div id="winner-announcement" class="hidden text-center py-8">
-                            <p class="text-xl" id="winner-name"></p>
+                            <p class="text-xl mb-4" id="winner-name"></p>
+                            <div id="countdown-container" class="hidden mt-6">
+                                <p class="text-lg text-gray-600">Redirection dans <span id="countdown" class="text-3xl font-bold text-blue-600">10</span> secondes...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -382,6 +385,12 @@
             .listen('GameFinished', (e) => {
                 console.log('🏆 GameFinished event received:', e);
                 showWinner(e.winner_name, e.winner_id);
+            })
+            .listen('SalonDeleted', (e) => {
+                console.log('🗑️ SalonDeleted event received:', e);
+                // La redirection se fait déjà automatiquement via le countdown
+                // On force juste la redirection au cas où
+                window.location.href = '/salons';
             });
 
         function addParticipant(user) {
@@ -454,6 +463,26 @@
                     ticket.classList.remove('winner');
                 }
             });
+
+            // Démarrer le countdown de 10 secondes
+            startCountdown();
+        }
+
+        function startCountdown() {
+            document.getElementById('countdown-container').classList.remove('hidden');
+            let timeLeft = 10;
+            const countdownEl = document.getElementById('countdown');
+
+            const countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownEl.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    // Redirection automatique
+                    window.location.href = '/salons';
+                }
+            }, 1000);
         }
 
         async function checkIfAllTicketsSelected() {

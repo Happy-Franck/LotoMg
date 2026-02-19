@@ -100,6 +100,24 @@ class ProcessGameDrawing extends Command
         \Log::info("Game {$game->id} finished, winner: " . ($winner ? $winner->user->name : 'none'));
 
         $this->info("Game {$game->id} finished");
+        
+        // Attendre 10 secondes puis supprimer le salon
+        $this->info("Waiting 10 seconds before deleting salon...");
+        sleep(10);
+        
+        $salon = $game->salon;
+        $salonId = $salon->id;
+        
+        // Notifier les utilisateurs que le salon va être supprimé
+        broadcast(new \App\Events\SalonDeleted($salonId));
+        
+        // Attendre 2 secondes pour que l'événement soit reçu
+        sleep(2);
+        
+        $salon->delete();
+        
+        $this->info("Salon {$salonId} deleted");
+        \Log::info("Salon {$salonId} deleted after game completion");
     }
 
     private function checkForWinner(Game $game, array $drawnNumbers)
