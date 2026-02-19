@@ -141,7 +141,15 @@
             background: linear-gradient(145deg, #d4edda, #c3e6cb);
         }
         .ticket.winner {
-            animation: winner 1s ease-in-out infinite;
+            background: linear-gradient(145deg, #d4edda, #a5d6a7) !important;
+            border-color: #00c853 !important;
+            animation: winner-pulse 1s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(0, 200, 83, 0.5);
+        }
+        .ticket.loser {
+            background: linear-gradient(145deg, #ffebee, #ef9a9a) !important;
+            border-color: #f44336 !important;
+            opacity: 0.7;
         }
         .ticket-row {
             display: flex;
@@ -187,9 +195,9 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
-        @keyframes winner {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
+        @keyframes winner-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 200, 83, 0.5); }
+            50% { transform: scale(1.02); box-shadow: 0 0 30px rgba(0, 200, 83, 0.8); }
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.8); }
@@ -311,6 +319,9 @@
                     document.getElementById('timer-container').classList.add('hidden');
                     document.getElementById('ticket-selection').classList.add('hidden');
                     alert('Ticket sélectionné ! En attente des autres joueurs...');
+                    
+                    // Vérifier si tous les tickets sont sélectionnés
+                    checkIfAllTicketsSelected();
                 }
             } catch (error) {
                 console.error('Error selecting ticket:', error);
@@ -371,7 +382,7 @@
             })
             .listen('GameFinished', (e) => {
                 console.log('🏆 GameFinished event received:', e);
-                showWinner(e.winner_name);
+                showWinner(e.winner_name, e.winner_id);
             });
 
         function addParticipant(user) {
@@ -401,7 +412,16 @@
             document.getElementById('participants-count').textContent = count;
         }
 
+        const drawnNumbersSet = new Set(); // Pour éviter les doublons
+
         function displayDrawnNumber(number) {
+            // Vérifier si le numéro a déjà été affiché
+            if (drawnNumbersSet.has(number)) {
+                console.log(`Number ${number} already displayed, skipping`);
+                return;
+            }
+            
+            drawnNumbersSet.add(number);
             const container = document.getElementById('drawn-numbers');
             const numberDiv = document.createElement('div');
             numberDiv.className = 'drawn-number';
@@ -409,9 +429,26 @@
             container.appendChild(numberDiv);
         }
 
-        function showWinner(winnerName) {
+        function showWinner(winnerName, winnerId) {
+            // Afficher l'annonce pour tous
             document.getElementById('winner-announcement').classList.remove('hidden');
-            document.getElementById('winner-name').textContent = `${winnerName} a gagné !`;
+            document.getElementById('winner-name').textContent = `🎉 ${winnerName} a gagné !`;
+            
+            // Colorer les tickets
+            const tickets = document.querySelectorAll('.ticket[data-ticket-id]');
+            tickets.forEach(ticket => {
+                const ticketUserId = parseInt(ticket.dataset.userId);
+                
+                if (ticketUserId === winnerId) {
+                    // Ticket gagnant en vert
+                    ticket.classList.add('winner');
+                    ticket.classList.remove('loser');
+                } else {
+                    // Tickets perdants en rouge
+                    ticket.classList.add('loser');
+                    ticket.classList.remove('winner');
+                }
+            });
         }
 
         async function checkIfAllTicketsSelected() {
@@ -441,6 +478,7 @@
                 const ticketDiv = document.createElement('div');
                 ticketDiv.className = 'ticket';
                 ticketDiv.dataset.ticketId = ticket.id;
+                ticketDiv.dataset.userId = ticket.user.id; // Ajouter l'ID de l'utilisateur
 
                 // Titre avec le nom du joueur
                 const title = document.createElement('div');
