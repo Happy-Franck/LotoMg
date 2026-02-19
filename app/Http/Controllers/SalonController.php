@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\SalonCreated;
+use App\Events\SalonUpdated;
 use App\Events\UserJoinedSalon;
 use App\Events\UserLeftSalon;
 use App\Models\Salon;
@@ -31,6 +33,9 @@ class SalonController extends Controller
 
         $salon = auth()->user()->ownedSalons()->create($validated);
         $salon->participants()->attach(auth()->id());
+        $salon->load('owner', 'participants');
+
+        broadcast(new SalonCreated($salon));
 
         return redirect()->route('salons.show', $salon)->with('success', 'Salon créé avec succès !');
     }
@@ -57,6 +62,9 @@ class SalonController extends Controller
         ]);
 
         $salon->update($validated);
+        $salon->load('owner', 'participants');
+
+        broadcast(new SalonUpdated($salon));
 
         return redirect()->route('salons.show', $salon)->with('success', 'Salon mis à jour avec succès !');
     }
@@ -71,10 +79,15 @@ class SalonController extends Controller
 
     public function join(Salon $salon)
     {
+        // Vérifier si le salon a un jeu actif
+        if ($salon->currentGame()->exists()) {
+            return redirect()->route('salons.index')->with('error', 'Ce salon a une partie en cours. Vous ne pouvez pas le rejoindre.');
+        }
+
         if (!$salon->participants->contains(auth()->id())) {
             $salon->participants()->attach(auth()->id());
-            $salon->refresh(); // Recharger le salon avec les nouvelles données
-            $salon->load('participants'); // Charger les participants
+            $salon->refresh();
+            $salon->load('owner', 'participants');
             
             \Log::info('User joined salon', [
                 'user_id' => auth()->id(),
@@ -84,6 +97,7 @@ class SalonController extends Controller
             ]);
             
             broadcast(new UserJoinedSalon(auth()->user(), $salon))->toOthers();
+            broadcast(new SalonUpdated($salon));
             
             \Log::info('Broadcast sent for UserJoinedSalon');
         }
@@ -95,10 +109,12 @@ class SalonController extends Controller
     {
         if ($salon->user_id !== auth()->id()) {
             $salon->participants()->detach(auth()->id());
-            $salon->refresh(); // Recharger le salon avec les nouvelles données
-            $salon->load('participants'); // Charger les participants
+            $salon->refresh();
+            $salon->load('owner', 'participants');
             
             broadcast(new UserLeftSalon(auth()->user(), $salon))->toOthers();
+            broadcast(new SalonUpdated($salon));
+            
             return redirect()->route('salons.index')->with('success', 'Vous avez quitté le salon !');
         }
 

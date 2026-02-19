@@ -25,3 +25,8 @@ Broadcast::channel('salon.{salonId}', function ($user, $salonId) {
     
     return $isParticipant;
 });
+
+// Channel public pour la liste des salons
+Broadcast::channel('salons', function ($user) {
+    return true; // Tous les utilisateurs authentifiés peuvent écouter
+});

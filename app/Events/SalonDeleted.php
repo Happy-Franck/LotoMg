@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -20,12 +21,14 @@ class SalonDeleted implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('salon.' . $this->salonId),
+            new Channel('salons'), // Aussi broadcaster sur le channel public
         ];
     }
 
     public function broadcastWith(): array
     {
         return [
+            'salon_id' => $this->salonId,
             'message' => 'Le salon va être supprimé. Redirection...',
         ];
     }

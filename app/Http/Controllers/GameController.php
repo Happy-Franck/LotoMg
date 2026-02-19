@@ -46,6 +46,10 @@ class GameController extends Controller
         }
 
         broadcast(new GameStarted($game, $salon))->toOthers();
+        
+        // Mettre à jour la liste des salons pour verrouiller ce salon
+        $salon->load('owner', 'participants');
+        broadcast(new \App\Events\SalonUpdated($salon));
 
         return response()->json($game->load('tickets'));
     }
