@@ -6,9 +6,11 @@ use App\Events\UserJoinedSalon;
 use App\Events\UserLeftSalon;
 use App\Models\Salon;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class SalonController extends Controller
 {
+    use AuthorizesRequests;
     public function index()
     {
         $salons = Salon::with('owner', 'participants')->latest()->get();
